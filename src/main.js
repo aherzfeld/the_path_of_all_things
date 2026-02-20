@@ -1,0 +1,483 @@
+import './style.css'
+import Sortable from 'sortablejs'
+import gameData from './data.json'
+
+// ── Constants ──
+const CARDS_PER_ROUND = 5
+const POINTS_FIRST_TRY = 5
+const PENALTY_PER_ERROR = 1
+const MAX_ERRORS_PER_LEVEL = 5
+const STARTING_LIVES = 3
+const STORAGE_KEY = 'path-of-all-things-highscore'
+
+// ── State ──
+const state = {
+  currentLevel: 0,
+  levels: gameData.levels,
+  activeEvents: [],
+  sortableInstance: null,
+  isRevealed: false,
+  score: 0,
+  levelErrors: 0,
+  lives: STARTING_LIVES,
+  highScore: loadHighScore(),
+}
+
+const app = document.getElementById('app')
+const progressDots = document.getElementById('progress-dots')
+const inkBleed = document.getElementById('ink-bleed')
+
+// ── High Score (localStorage) ──
+function loadHighScore() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    return saved ? parseInt(saved, 10) : 0
+  } catch {
+    return 0
+  }
+}
+
+function saveHighScore(score) {
+  try {
+    if (score > state.highScore) {
+      state.highScore = score
+      localStorage.setItem(STORAGE_KEY, String(score))
+    }
+  } catch {
+    // localStorage unavailable — silent fail
+  }
+}
+
+// ── Utilities ──
+function shuffleArray(arr) {
+  const shuffled = [...arr]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
+function pickRandomEvents(events, count) {
+  const shuffled = shuffleArray(events)
+  return shuffled.slice(0, count)
+}
+
+// ── Year Formatter ──
+function formatYear(year) {
+  const abs = Math.abs(year)
+  const suffix = year < 0 ? 'ago' : 'from now'
+
+  if (abs >= 1e20) {
+    const exp = Math.floor(Math.log10(abs))
+    return `10${toSuperscript(exp)} years ${suffix}`
+  }
+  if (abs >= 1e12) {
+    return `${formatDecimal(abs / 1e12)} trillion years ${suffix}`
+  }
+  if (abs >= 1e9) {
+    return `${formatDecimal(abs / 1e9)} billion years ${suffix}`
+  }
+  if (abs >= 1e6) {
+    return `${formatDecimal(abs / 1e6)} million years ${suffix}`
+  }
+  if (abs >= 10000) {
+    return `~${Math.round(abs / 1000).toLocaleString()},000 years ${suffix}`
+  }
+  if (year < 0) {
+    return `${abs.toLocaleString()} BCE`
+  }
+  return `${year} CE`
+}
+
+function formatDecimal(n) {
+  return n % 1 === 0 ? n.toString() : n.toFixed(1)
+}
+
+function toSuperscript(num) {
+  const superscripts = { '0': '\u2070', '1': '\u00b9', '2': '\u00b2', '3': '\u00b3', '4': '\u2074', '5': '\u2075', '6': '\u2076', '7': '\u2077', '8': '\u2078', '9': '\u2079' }
+  return String(num).split('').map(d => superscripts[d] || d).join('')
+}
+
+// ── Render Progress Dots ──
+function renderProgressDots() {
+  progressDots.innerHTML = state.levels
+    .map((_, i) => {
+      let cls = 'progress-dot'
+      if (i < state.currentLevel) cls += ' completed'
+      if (i === state.currentLevel) cls += ' active'
+      return `<div class="${cls}"></div>`
+    })
+    .join('')
+}
+
+// ── Render HUD ──
+function renderHUD() {
+  // Score
+  const el = document.getElementById('score-display')
+  if (el) el.textContent = state.score
+  const hi = document.getElementById('highscore-display')
+  if (hi) hi.textContent = state.highScore
+
+  // Lives
+  const livesEl = document.getElementById('lives-display')
+  if (livesEl) {
+    livesEl.innerHTML = Array.from({ length: STARTING_LIVES }, (_, i) => {
+      const alive = i < state.lives
+      return `<span class="life-pip ${alive ? 'alive' : 'spent'}">\u25C6</span>`
+    }).join('')
+  }
+}
+
+// ── Create Card HTML ──
+function createCardHTML(event) {
+  return `
+    <div class="card card-enter" data-id="${event.id}">
+      <div class="card-glow"></div>
+      <div class="card-inner">
+        <div class="card-edge-top"></div>
+        <div class="card-content">
+          <h3 class="card-title">${event.title}</h3>
+          <p class="card-flavor">${event.description}</p>
+          <div class="card-year">${formatYear(event.year)}</div>
+        </div>
+        <div class="card-edge-bottom"></div>
+      </div>
+    </div>
+  `
+}
+
+// ── Reveal Correct Order ──
+// Sorts cards into correct order in the DOM, then reveals them
+function revealCorrectOrder(feedbackMsg, feedbackColor) {
+  state.isRevealed = true
+
+  const cardList = document.getElementById('card-list')
+  const cards = [...cardList.querySelectorAll('.card')]
+  const feedback = document.getElementById('feedback')
+
+  // Disable sorting immediately
+  if (state.sortableInstance) {
+    state.sortableInstance.option('disabled', true)
+  }
+
+  const correctOrder = [...state.activeEvents]
+    .sort((a, b) => a.year - b.year)
+    .map(e => e.id)
+
+  // Rearrange DOM to correct order
+  correctOrder.forEach(id => {
+    const card = cards.find(c => parseInt(c.dataset.id) === id)
+    if (card) cardList.appendChild(card)
+  })
+
+  // Re-query after DOM rearrange
+  const sortedCards = [...cardList.querySelectorAll('.card')]
+
+  feedback.textContent = feedbackMsg
+  feedback.style.opacity = '1'
+  feedback.style.color = feedbackColor
+
+  renderHUD()
+
+  // Stagger reveal
+  sortedCards.forEach((card, i) => {
+    setTimeout(() => {
+      card.classList.add('revealed', 'correct')
+    }, i * 200)
+  })
+
+  // Show next/complete button
+  const btn = document.getElementById('btn-check')
+  setTimeout(() => {
+    if (state.currentLevel < state.levels.length - 1) {
+      btn.textContent = 'Continue'
+      btn.removeEventListener('click', checkOrder)
+      btn.addEventListener('click', nextLevel)
+    } else {
+      btn.textContent = 'Complete'
+      btn.removeEventListener('click', checkOrder)
+      btn.addEventListener('click', showCompletion)
+    }
+  }, sortedCards.length * 200 + 400)
+}
+
+// ── Render Level ──
+function renderLevel() {
+  const level = state.levels[state.currentLevel]
+  state.activeEvents = pickRandomEvents(level.events, CARDS_PER_ROUND)
+  const shuffledEvents = shuffleArray(state.activeEvents)
+  state.isRevealed = false
+  state.levelErrors = 0
+
+  app.innerHTML = `
+    <div class="text-center mb-12">
+      <h1 class="level-title text-3xl md:text-4xl font-semibold tracking-wide" style="font-family: var(--font-serif);">
+        ${level.name}
+      </h1>
+      <p class="level-subtitle mt-3 text-base italic opacity-50" style="font-family: var(--font-serif);">
+        ${level.subtitle}
+      </p>
+      <p class="level-subtitle mt-6 text-xs tracking-[0.2em] uppercase opacity-30">
+        Arrange from earliest to latest
+      </p>
+    </div>
+
+    <div class="relative w-full max-w-lg mx-auto">
+      <div class="timeline-line"></div>
+      <div id="card-list" class="relative z-10 flex flex-col items-center gap-3 px-2">
+        ${shuffledEvents.map(e => createCardHTML(e)).join('')}
+      </div>
+    </div>
+
+    <div class="mt-10 flex flex-col items-center gap-4">
+      <button class="btn-contemplate" id="btn-check">
+        Contemplate
+      </button>
+      <p id="feedback" class="text-sm italic opacity-0 transition-opacity duration-700" style="font-family: var(--font-serif);">
+        &nbsp;
+      </p>
+    </div>
+  `
+
+  // Init SortableJS
+  const cardList = document.getElementById('card-list')
+  if (state.sortableInstance) state.sortableInstance.destroy()
+
+  state.sortableInstance = Sortable.create(cardList, {
+    animation: 450,
+    easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+    ghostClass: 'sortable-ghost',
+    chosenClass: 'sortable-chosen',
+    dragClass: 'sortable-drag',
+    delay: 50,
+    delayOnTouchOnly: true,
+  })
+
+  document.getElementById('btn-check').addEventListener('click', checkOrder)
+  renderHUD()
+}
+
+// ── Check Order ──
+function checkOrder() {
+  if (state.isRevealed) return
+
+  const cardList = document.getElementById('card-list')
+  const cards = [...cardList.querySelectorAll('.card')]
+  const currentOrder = cards.map(c => parseInt(c.dataset.id))
+
+  const correctOrder = [...state.activeEvents]
+    .sort((a, b) => a.year - b.year)
+    .map(e => e.id)
+
+  const isCorrect = currentOrder.every((id, i) => id === correctOrder[i])
+  const feedback = document.getElementById('feedback')
+
+  if (isCorrect) {
+    // Calculate score for this level
+    const levelScore = Math.max(0, POINTS_FIRST_TRY - (state.levelErrors * PENALTY_PER_ERROR))
+    state.score += levelScore
+
+    let msg = ''
+    if (state.levelErrors === 0) {
+      msg = 'Perfect clarity. +5'
+    } else if (levelScore > 0) {
+      msg = `The path reveals itself. +${levelScore}`
+    } else {
+      msg = 'The path reveals itself, at last.'
+    }
+
+    revealCorrectOrder(msg, 'var(--color-moss)')
+  } else {
+    state.levelErrors++
+
+    // 5th error — lose a life, auto-reveal
+    if (state.levelErrors >= MAX_ERRORS_PER_LEVEL) {
+      state.lives--
+      renderHUD()
+
+      // Check for game over
+      if (state.lives <= 0) {
+        // Brief pause to let the life disappear register, then game over
+        setTimeout(() => showGameOver(), 1200)
+        // Still reveal the answer first
+        revealCorrectOrder('The path was beyond reach. A light fades.', 'var(--color-rust)')
+        return
+      }
+
+      revealCorrectOrder('The path reveals itself, but a light fades.', 'var(--color-rust)')
+      return
+    }
+
+    const attemptsLeft = MAX_ERRORS_PER_LEVEL - state.levelErrors
+    const remaining = Math.max(0, POINTS_FIRST_TRY - (state.levelErrors * PENALTY_PER_ERROR))
+
+    let msg = ''
+    if (remaining > 0) {
+      msg = `Not quite. ${remaining} point${remaining !== 1 ? 's' : ''} remaining. ${attemptsLeft} attempt${attemptsLeft !== 1 ? 's' : ''} left.`
+    } else {
+      msg = `No points remain. ${attemptsLeft} attempt${attemptsLeft !== 1 ? 's' : ''} before the path reveals itself.`
+    }
+
+    feedback.textContent = msg
+    feedback.style.opacity = '1'
+    feedback.style.color = 'var(--color-rust)'
+
+    // Only highlight cards that are in the wrong position
+    cards.forEach((card, i) => {
+      if (currentOrder[i] !== correctOrder[i]) {
+        card.classList.add('wrong')
+      }
+    })
+    setTimeout(() => {
+      cards.forEach(card => card.classList.remove('wrong'))
+    }, 3700)
+
+    setTimeout(() => {
+      feedback.style.opacity = '0'
+    }, 3000)
+  }
+}
+
+// ── Next Level ──
+function nextLevel() {
+  inkBleed.classList.add('active')
+
+  setTimeout(() => {
+    state.currentLevel++
+    renderProgressDots()
+    renderLevel()
+
+    setTimeout(() => {
+      inkBleed.classList.remove('active')
+    }, 300)
+  }, 1200)
+}
+
+// ── Game Over Screen ──
+function showGameOver() {
+  saveHighScore(state.score)
+  const isNewRecord = state.score > 0 && state.score >= state.highScore
+
+  inkBleed.classList.add('active')
+
+  setTimeout(() => {
+    app.innerHTML = `
+      <div class="completion-message text-center max-w-lg">
+        <h1 class="text-4xl md:text-5xl font-semibold tracking-wide mb-6" style="font-family: var(--font-serif); color: var(--color-rust);">
+          The Path Fades
+        </h1>
+        <p class="text-lg italic opacity-60 leading-relaxed mb-8" style="font-family: var(--font-serif);">
+          All lights have dimmed. The thread slips from your hands,<br>
+          but the path remains, patient, for those who return.
+        </p>
+
+        <div class="score-final">
+          <div class="text-5xl font-semibold" style="color: var(--color-gold); font-family: var(--font-serif);">
+            ${state.score}
+          </div>
+          <div class="mt-2 text-xs tracking-[0.2em] uppercase opacity-40">
+            points earned
+          </div>
+          ${isNewRecord ? `
+            <div class="mt-3 text-sm tracking-[0.15em]" style="color: var(--color-moss);">
+              \u2726 New High Score \u2726
+            </div>
+          ` : state.highScore > 0 ? `
+            <div class="mt-3 text-xs opacity-30">
+              Best: ${state.highScore}
+            </div>
+          ` : ''}
+        </div>
+
+        <button class="btn-contemplate mt-10" id="btn-restart">
+          Begin Again
+        </button>
+      </div>
+    `
+
+    document.getElementById('btn-restart').addEventListener('click', () => {
+      inkBleed.classList.add('active')
+      setTimeout(() => {
+        state.currentLevel = 0
+        state.score = 0
+        state.levelErrors = 0
+        state.lives = STARTING_LIVES
+        renderProgressDots()
+        renderLevel()
+        setTimeout(() => inkBleed.classList.remove('active'), 300)
+      }, 1200)
+    })
+
+    setTimeout(() => inkBleed.classList.remove('active'), 300)
+  }, 1200)
+}
+
+// ── Completion Screen ──
+function showCompletion() {
+  saveHighScore(state.score)
+  const isNewRecord = state.score >= state.highScore
+
+  inkBleed.classList.add('active')
+
+  setTimeout(() => {
+    app.innerHTML = `
+      <div class="completion-message text-center max-w-lg">
+        <h1 class="text-4xl md:text-5xl font-semibold tracking-wide mb-6" style="font-family: var(--font-serif);">
+          The Path is Walked
+        </h1>
+        <p class="text-lg italic opacity-60 leading-relaxed mb-8" style="font-family: var(--font-serif);">
+          From the first light to the last silence,<br>
+          you have traced the thread that binds all things.
+        </p>
+
+        <div class="score-final">
+          <div class="text-5xl font-semibold" style="color: var(--color-gold); font-family: var(--font-serif);">
+            ${state.score}
+          </div>
+          <div class="mt-2 text-xs tracking-[0.2em] uppercase opacity-40">
+            points earned
+          </div>
+          <div class="mt-1 text-xs opacity-25">
+            ${state.lives} ${state.lives === 1 ? 'light' : 'lights'} remaining
+          </div>
+          ${isNewRecord ? `
+            <div class="mt-3 text-sm tracking-[0.15em]" style="color: var(--color-moss);">
+              \u2726 New High Score \u2726
+            </div>
+          ` : `
+            <div class="mt-3 text-xs opacity-30">
+              Best: ${state.highScore}
+            </div>
+          `}
+        </div>
+
+        <div class="mt-10 opacity-20 text-sm tracking-[0.2em] uppercase">
+          13.8 billion years, contemplated
+        </div>
+        <button class="btn-contemplate mt-10" id="btn-restart">
+          Begin Again
+        </button>
+      </div>
+    `
+
+    document.getElementById('btn-restart').addEventListener('click', () => {
+      inkBleed.classList.add('active')
+      setTimeout(() => {
+        state.currentLevel = 0
+        state.score = 0
+        state.levelErrors = 0
+        state.lives = STARTING_LIVES
+        renderProgressDots()
+        renderLevel()
+        setTimeout(() => inkBleed.classList.remove('active'), 300)
+      }, 1200)
+    })
+
+    setTimeout(() => inkBleed.classList.remove('active'), 300)
+  }, 1200)
+}
+
+// ── Init ──
+renderProgressDots()
+renderLevel()

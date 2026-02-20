@@ -1,0 +1,505 @@
+@import "tailwindcss";
+
+/* ── Wabi-Sabi Theme ── */
+@theme {
+  --color-ink: #1a1a1a;
+  --color-ink-light: #2a2a28;
+  --color-paper: #f5f0e8;
+  --color-paper-dark: #e8dfd2;
+  --color-gold: #c4a882;
+  --color-gold-dim: #a08968;
+  --color-warmth: #e8e0d4;
+  --color-moss: #7a8c6e;
+  --color-rust: #b07a5b;
+  --color-correct: #7a8c6e;
+  --color-wrong: #b07a5b;
+  --font-serif: 'EB Garamond', 'Georgia', serif;
+}
+
+/* ── Base ── */
+body {
+  font-family: var(--font-serif);
+  background-color: var(--color-ink);
+  color: var(--color-warmth);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+  margin: 0;
+}
+
+/* ── Paper Grain Texture ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Drifting Dust Particles ── */
+.dust-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.dust {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: var(--color-gold);
+  border-radius: 50%;
+  opacity: 0;
+  animation: drift linear infinite;
+}
+
+.dust:nth-child(1) { left: 10%; animation-duration: 28s; animation-delay: 0s; }
+.dust:nth-child(2) { left: 25%; animation-duration: 34s; animation-delay: 4s; }
+.dust:nth-child(3) { left: 40%; animation-duration: 22s; animation-delay: 8s; }
+.dust:nth-child(4) { left: 55%; animation-duration: 30s; animation-delay: 2s; }
+.dust:nth-child(5) { left: 70%; animation-duration: 26s; animation-delay: 6s; }
+.dust:nth-child(6) { left: 85%; animation-duration: 32s; animation-delay: 10s; }
+.dust:nth-child(7) { left: 15%; animation-duration: 36s; animation-delay: 14s; }
+.dust:nth-child(8) { left: 60%; animation-duration: 24s; animation-delay: 12s; }
+
+@keyframes drift {
+  0% {
+    transform: translateY(100vh) translateX(0px);
+    opacity: 0;
+  }
+  10% { opacity: 0.4; }
+  50% { opacity: 0.15; }
+  90% { opacity: 0.3; }
+  100% {
+    transform: translateY(-20px) translateX(40px);
+    opacity: 0;
+  }
+}
+
+/* ══════════════════════════════════════════════
+   PARCHMENT CARD — Wabi-Sabi
+   ══════════════════════════════════════════════ */
+.card {
+  width: 100%;
+  max-width: 28rem;
+  cursor: grab;
+  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+  user-select: none;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.12));
+}
+
+.card-inner {
+  position: relative;
+  background: linear-gradient(
+    168deg,
+    #f5f0e8 0%,
+    #efe9dd 25%,
+    #f2ece2 50%,
+    #e8dfd2 75%,
+    #f0e9de 100%
+  );
+  clip-path: polygon(
+    0% 2%, 3% 0%, 7% 1%, 12% 0%, 18% 1.5%, 25% 0%, 33% 0.8%,
+    40% 0%, 48% 1%, 55% 0%, 63% 0.5%, 70% 0%, 78% 1.2%,
+    85% 0%, 92% 0.8%, 97% 0%, 100% 1.5%,
+    100% 5%, 99.5% 12%, 100% 20%, 99% 30%, 100% 40%,
+    99.5% 50%, 100% 60%, 99% 70%, 100% 80%, 99.5% 90%, 100% 97%,
+    97% 100%, 92% 99%, 85% 100%, 78% 99.2%, 70% 100%, 63% 99.5%,
+    55% 100%, 48% 99%, 40% 100%, 33% 99.5%, 25% 100%, 18% 98.5%,
+    12% 100%, 7% 99%, 3% 100%, 0% 98%,
+    0.5% 90%, 0% 80%, 1% 70%, 0% 60%, 0.5% 50%,
+    0% 40%, 1% 30%, 0% 20%, 0.5% 12%, 0% 5%
+  );
+  overflow: hidden;
+}
+
+/* Parchment noise overlay */
+.card-inner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.08;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='6' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+/* Aged stain / water mark effect */
+.card-inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 60% at 70% 30%,
+    rgba(180, 160, 120, 0.06) 0%,
+    transparent 70%
+  ),
+  radial-gradient(
+    ellipse 50% 40% at 20% 80%,
+    rgba(160, 140, 100, 0.04) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+}
+
+/* Deckled edge shadows */
+.card-edge-top,
+.card-edge-bottom {
+  height: 3px;
+  position: relative;
+}
+
+.card-edge-top {
+  background: linear-gradient(
+    90deg,
+    transparent 0%, rgba(160, 140, 100, 0.08) 10%, rgba(160, 140, 100, 0.04) 50%, rgba(160, 140, 100, 0.08) 90%, transparent 100%
+  );
+}
+
+.card-edge-bottom {
+  background: linear-gradient(
+    90deg,
+    transparent 0%, rgba(120, 100, 70, 0.06) 20%, rgba(120, 100, 70, 0.03) 50%, rgba(120, 100, 70, 0.06) 80%, transparent 100%
+  );
+}
+
+/* Card content area */
+.card-content {
+  padding: 1.25rem 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.card-title {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #2a2520;
+  line-height: 1.3;
+}
+
+/* Flavor text — always visible poetic hint */
+.card-flavor {
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  font-style: italic;
+  line-height: 1.55;
+  color: #7a7062;
+  font-family: var(--font-serif);
+}
+
+.card-year {
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-gold-dim);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+  transition-delay: 0.1s;
+}
+
+/* ── Card Interactions ── */
+.card:hover {
+  transform: translateY(-3px);
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.18));
+}
+
+.card:active {
+  cursor: grabbing;
+}
+
+.card.sortable-ghost {
+  opacity: 0.3;
+  transform: scale(0.95);
+}
+
+.card.sortable-chosen {
+  filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.22));
+  transform: scale(1.02) rotate(0.5deg);
+}
+
+/* ── Card States ── */
+.card.correct .card-inner {
+  background: linear-gradient(
+    168deg,
+    #f0ede4 0%,
+    #ebe7db 50%,
+    #e8e4d8 100%
+  );
+  box-shadow: inset -3px 0 0 var(--color-correct);
+}
+
+.card.correct::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10%;
+  bottom: 10%;
+  width: 3px;
+  background: var(--color-correct);
+  border-radius: 0 2px 2px 0;
+  opacity: 0.7;
+}
+
+/* Wrong-card glow — a warm ember behind the parchment */
+.card .card-glow {
+  position: absolute;
+  inset: -4px;
+  border-radius: 4px;
+  opacity: 0;
+  background: rgba(176, 122, 91, 0.18);
+  box-shadow: 0 0 14px 5px rgba(176, 122, 91, 0.4),
+              0 0 32px 10px rgba(176, 122, 91, 0.18);
+  pointer-events: none;
+  z-index: -1;
+  transition: opacity 0.8s ease-out;
+}
+
+.card.wrong .card-glow {
+  animation: glow-pulse 3.6s ease-in-out forwards;
+}
+
+@keyframes glow-pulse {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── Card Reveal ── */
+.card.revealed .card-year {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Ink Bleed Transition ── */
+.ink-bleed {
+  position: fixed;
+  inset: 0;
+  background: var(--color-ink);
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ink-bleed.active {
+  opacity: 1;
+}
+
+/* ── Timeline Path ── */
+.timeline-line {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--color-gold-dim) 15%,
+    var(--color-gold-dim) 85%,
+    transparent
+  );
+  opacity: 0.2;
+}
+
+/* ── Contemplate Button ── */
+.btn-contemplate {
+  background: transparent;
+  border: 1px solid var(--color-gold-dim);
+  color: var(--color-gold);
+  font-family: var(--font-serif);
+  padding: 0.75rem 2.5rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+  clip-path: polygon(1% 0%, 99% 1%, 100% 99%, 0% 98%);
+}
+
+.btn-contemplate:hover {
+  background: rgba(196, 168, 130, 0.08);
+  border-color: var(--color-gold);
+  transform: translateY(-1px);
+}
+
+.btn-contemplate:disabled {
+  opacity: 0.3;
+  cursor: default;
+  transform: none;
+}
+
+/* ── Level Title ── */
+.level-title {
+  opacity: 0;
+  transform: translateY(12px);
+  animation: fade-in 1.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+.level-subtitle {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: fade-in 1.2s cubic-bezier(0.23, 1, 0.32, 1) 0.3s forwards;
+}
+
+@keyframes fade-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Cards stagger entrance ── */
+.card-enter {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: card-appear 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+.card-enter:nth-child(1) { animation-delay: 0.1s; }
+.card-enter:nth-child(2) { animation-delay: 0.2s; }
+.card-enter:nth-child(3) { animation-delay: 0.3s; }
+.card-enter:nth-child(4) { animation-delay: 0.4s; }
+.card-enter:nth-child(5) { animation-delay: 0.5s; }
+
+@keyframes card-appear {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── HUD ── */
+.hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+.hud > * {
+  pointer-events: auto;
+}
+
+/* ── Score Display ── */
+.score-hud {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  font-family: var(--font-serif);
+}
+
+.score-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.score-value {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--color-gold);
+  line-height: 1;
+}
+
+.score-label {
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.35;
+}
+
+.score-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--color-gold-dim);
+  opacity: 0.2;
+}
+
+/* ── Level Progress Dots ── */
+.progress-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-gold-dim);
+  opacity: 0.3;
+  transition: all 0.6s ease;
+}
+
+.progress-dot.active {
+  opacity: 1;
+  background: var(--color-gold);
+  box-shadow: 0 0 8px rgba(196, 168, 130, 0.3);
+}
+
+.progress-dot.completed {
+  opacity: 0.7;
+  background: var(--color-moss);
+}
+
+/* ── Score Final (completion) ── */
+.score-final {
+  margin-top: 1.5rem;
+  padding: 1.5rem 2rem;
+  border: 1px solid rgba(196, 168, 130, 0.15);
+  clip-path: polygon(1% 0%, 99% 1%, 100% 99%, 0% 98%);
+}
+
+/* ── Completion Screen ── */
+.completion-message {
+  opacity: 0;
+  transform: scale(0.98) translateY(10px);
+  animation: completion-appear 1.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+@keyframes completion-appear {
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ── Lives Display ── */
+.lives-display {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.life-pip {
+  font-size: 0.85rem;
+  line-height: 1;
+  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.life-pip.alive {
+  color: var(--color-gold);
+  opacity: 0.9;
+  text-shadow: 0 0 6px rgba(196, 168, 130, 0.25);
+}
+
+.life-pip.spent {
+  color: var(--color-gold-dim);
+  opacity: 0.15;
+  transform: scale(0.8);
+}

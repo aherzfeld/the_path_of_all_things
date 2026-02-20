@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Path of All Things</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x25CC;</text></svg>" />
+  </head>
+  <body class="antialiased">
+
+    <!-- Drifting Dust -->
+    <div class="dust-container" aria-hidden="true">
+      <div class="dust"></div>
+      <div class="dust"></div>
+      <div class="dust"></div>
+      <div class="dust"></div>
+      <div class="dust"></div>
+      <div class="dust"></div>
+      <div class="dust"></div>
+      <div class="dust"></div>
+    </div>
+
+    <!-- Ink Bleed Transition -->
+    <div class="ink-bleed" id="ink-bleed" aria-hidden="true"></div>
+
+    <!-- HUD -->
+    <header class="hud">
+      <div class="text-sm tracking-[0.2em] uppercase opacity-50" style="font-family: var(--font-serif);">
+        The Path of All Things
+      </div>
+      <div class="flex items-center gap-4">
+        <div id="lives-display" class="lives-display">
+          <span class="life-pip alive">&#x25C6;</span>
+          <span class="life-pip alive">&#x25C6;</span>
+          <span class="life-pip alive">&#x25C6;</span>
+        </div>
+        <div class="score-hud">
+          <div class="score-item">
+            <span class="score-value" id="score-display">0</span>
+            <span class="score-label">Score</span>
+          </div>
+          <div class="score-divider"></div>
+          <div class="score-item">
+            <span class="score-value" id="highscore-display" style="opacity: 0.5; font-size: 0.95rem;">0</span>
+            <span class="score-label">Best</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2" id="progress-dots"></div>
+      </div>
+    </header>
+
+    <!-- Main Game Area -->
+    <main id="app" class="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-20">
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
