@@ -9,6 +9,7 @@ const PENALTY_PER_ERROR = 1
 const MAX_ERRORS_PER_LEVEL = 5
 const STARTING_LIVES = 3
 const STORAGE_KEY = 'path-of-all-things-highscore'
+const MUSIC_VOLUME_KEY = 'path-of-all-things-music'
 
 // ── State ──
 const state = {
@@ -21,11 +22,61 @@ const state = {
   levelErrors: 0,
   lives: STARTING_LIVES,
   highScore: loadHighScore(),
+  musicPlaying: false,
 }
 
 const app = document.getElementById('app')
 const progressDots = document.getElementById('progress-dots')
 const inkBleed = document.getElementById('ink-bleed')
+
+// ── Background Music ──
+const bgMusic = new Audio('/music.mp3')
+bgMusic.loop = true
+bgMusic.volume = 0.3
+bgMusic.preload = 'auto'
+
+function initMusic() {
+  if (state.musicPlaying) return
+  const saved = localStorage.getItem(MUSIC_VOLUME_KEY)
+  if (saved === 'muted') {
+    state.musicPlaying = false
+    updateMusicButton()
+    return
+  }
+  bgMusic.play().then(() => {
+    state.musicPlaying = true
+    updateMusicButton()
+  }).catch(() => {
+    // Autoplay blocked — will start on first user interaction
+  })
+}
+
+function toggleMusic() {
+  if (state.musicPlaying) {
+    bgMusic.pause()
+    state.musicPlaying = false
+    localStorage.setItem(MUSIC_VOLUME_KEY, 'muted')
+  } else {
+    bgMusic.play().then(() => {
+      state.musicPlaying = true
+      localStorage.setItem(MUSIC_VOLUME_KEY, 'on')
+    })
+  }
+  updateMusicButton()
+}
+
+function updateMusicButton() {
+  const btn = document.getElementById('music-toggle')
+  if (btn) btn.textContent = state.musicPlaying ? '\u266B' : '\u266C'
+  if (btn) btn.title = state.musicPlaying ? 'Mute music' : 'Play music'
+  if (btn) btn.classList.toggle('muted', !state.musicPlaying)
+}
+
+// Start music on first user interaction
+document.addEventListener('click', function startMusic() {
+  initMusic()
+  document.removeEventListener('click', startMusic)
+}, { once: true })
 
 // ── High Score (localStorage) ──
 function loadHighScore() {
@@ -147,6 +198,41 @@ function createCardHTML(event) {
   `
 }
 
+// ── Info Modal ──
+function showInfoModal(event) {
+  const existing = document.querySelector('.modal-overlay')
+  if (existing) existing.remove()
+
+  const bodyHTML = (event.info || 'No additional information available.')
+    .split('\n\n')
+    .map(p => `<p>${p}</p>`)
+    .join('')
+
+  const overlay = document.createElement('div')
+  overlay.className = 'modal-overlay'
+  overlay.innerHTML = `
+    <div class="modal-card">
+      <button class="modal-close" aria-label="Close">&times;</button>
+      <div class="modal-title">${event.title}</div>
+      <div class="modal-year">${formatYear(event.year)}</div>
+      <div class="modal-divider"></div>
+      <div class="modal-body">${bodyHTML}</div>
+    </div>
+  `
+
+  document.body.appendChild(overlay)
+
+  function closeModal() {
+    overlay.classList.add('closing')
+    setTimeout(() => overlay.remove(), 300)
+  }
+
+  overlay.querySelector('.modal-close').addEventListener('click', closeModal)
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal()
+  })
+}
+
 // ── Reveal Correct Order ──
 // Sorts cards into correct order in the DOM, then reveals them
 function revealCorrectOrder(feedbackMsg, feedbackColor) {
@@ -180,11 +266,18 @@ function revealCorrectOrder(feedbackMsg, feedbackColor) {
 
   renderHUD()
 
-  // Stagger reveal
+  // Stagger reveal + attach click handlers for info modals
   sortedCards.forEach((card, i) => {
     setTimeout(() => {
       card.classList.add('revealed', 'correct')
     }, i * 200)
+
+    card.addEventListener('click', () => {
+      if (!card.classList.contains('revealed')) return
+      const eventId = parseInt(card.dataset.id)
+      const event = state.activeEvents.find(e => e.id === eventId)
+      if (event) showInfoModal(event)
+    })
   })
 
   // Show next/complete button
@@ -479,5 +572,6 @@ function showCompletion() {
 }
 
 // ── Init ──
+document.getElementById('music-toggle').addEventListener('click', toggleMusic)
 renderProgressDots()
 renderLevel()
