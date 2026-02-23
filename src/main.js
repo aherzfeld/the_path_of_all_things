@@ -575,3 +575,77 @@ function showCompletion() {
 document.getElementById('music-toggle').addEventListener('click', toggleMusic)
 renderProgressDots()
 renderLevel()
+
+function initEmbers() {
+  const canvas = document.getElementById('embers-canvas');
+  const ctx = canvas.getContext('2d');
+
+  let width, height, particles;
+
+  // Configuration
+  const particleCount = 40;
+  const colors = ['#c4a882', '#e8e0d4', '#8c7a5d']; // Gold, Off-white, Dim gold
+
+  function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  }
+
+  class Particle {
+    constructor() {
+      this.reset();
+    }
+
+    reset() {
+      this.x = Math.random() * width;
+      this.y = height + Math.random() * 100; // Start below screen
+      this.size = Math.random() * 2 + 0.5;
+      this.speedY = Math.random() * 0.4 + 0.1; // Slow drift
+      this.speedX = Math.random() * 0.2 - 0.1;
+      this.opacity = Math.random() * 0.5 + 0.1;
+      this.color = colors[Math.floor(Math.random() * colors.length)];
+      this.oscillation = Math.random() * 100; // For swaying
+    }
+
+    update() {
+      this.y -= this.speedY;
+      // Gentle swaying movement
+      this.x += Math.sin(this.y / 50 + this.oscillation) * 0.2;
+
+      // If it goes off top, reset to bottom
+      if (this.y < -10) {
+        this.reset();
+      }
+    }
+
+    draw() {
+      ctx.globalAlpha = this.opacity;
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      // Use a soft circle for a "glow" feel
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function init() {
+    resize();
+    particles = Array.from({ length: particleCount }, () => new Particle());
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, width, height);
+    particles.forEach(p => {
+      p.update();
+      p.draw();
+    });
+    requestAnimationFrame(animate);
+  }
+
+  window.addEventListener('resize', resize);
+  init();
+  animate();
+}
+
+// Call the function
+initEmbers();
