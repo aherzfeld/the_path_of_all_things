@@ -213,10 +213,19 @@ function showInfoModal(event) {
   overlay.innerHTML = `
     <div class="modal-card">
       <button class="modal-close" aria-label="Close">&times;</button>
-      <div class="modal-title">${event.title}</div>
-      <div class="modal-year">${formatYear(event.year)}</div>
+      <div class="modal-header">
+        <div class="modal-title">${event.title}</div>
+        <div class="modal-year">${formatYear(event.year)}</div>
+      </div>
       <div class="modal-divider"></div>
-      <div class="modal-body">${bodyHTML}</div>
+      <div class="modal-columns">
+        <div class="modal-image">
+          <div class="modal-image-placeholder">
+            <span class="modal-image-icon">&#x25CC;</span>
+          </div>
+        </div>
+        <div class="modal-body">${bodyHTML}</div>
+      </div>
     </div>
   `
 
