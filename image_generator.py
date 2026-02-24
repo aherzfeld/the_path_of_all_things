@@ -7,14 +7,14 @@ from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable, In
 
 # ================= CONFIGURATION =================
 # Your Project ID
-PROJECT_ID = "p1-history-game" 
+PROJECT_ID = "p1-history-images" 
 
 # We are defaulting to us-central1 (Iowa). 
 # If you get a "404 Not Found" error, try changing this to "us-east4" or "europe-west4".
 LOCATION = "us-central1" 
 
 # Using Imagen 3 for best quality and text rendering
-MODEL_NAME = "imagen-3.0-generate-001" 
+MODEL_NAME = "imagen-3.0-fast-generate-001" 
 
 # Set to 4:3 to match the box in your screenshot
 ASPECT_RATIO = "4:3" 
@@ -23,7 +23,7 @@ ASPECT_RATIO = "4:3"
 OUTPUT_DIR = "generated_images"
 
 # Your data file
-JSON_FILE = "data_with_prompts.json"
+JSON_FILE = "src/data_with_prompts.json"
 # =================================================
 
 def setup_environment():
