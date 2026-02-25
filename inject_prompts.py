@@ -1,7 +1,7 @@
 import json
 
 # 1. Update this line to look in the src folder
-with open('src/data_with_prompts.json', 'r', encoding='utf-8') as f:
+with open('src/data.json', 'r', encoding='utf-8') as f:
     data = json.load(f)
 
 PROMPT_TEMPLATE = (
