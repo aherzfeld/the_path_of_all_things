@@ -29,11 +29,38 @@ const app = document.getElementById('app')
 const progressDots = document.getElementById('progress-dots')
 const inkBleed = document.getElementById('ink-bleed')
 
-// ── Background Music ──
+// ── Audio ──
 const bgMusic = new Audio('/music.mp3')
 bgMusic.loop = true
-bgMusic.volume = 0.3
+bgMusic.volume = 0.12
 bgMusic.preload = 'auto'
+
+// Sound effects
+const sfx = {
+  cardMove:   new Audio('/Card movement - Epidemic Sound.wav'),
+  incorrect:  new Audio('/Incorrect_Wood Impact.mp3'),
+  correct:    new Audio('/All 5 Correct_Japanese Instrument.wav'),
+  modalOpen:  new Audio('/Modal Open - Epidemic Sound.wav'),
+  nextLevel:  new Audio('/Next Level_Bamboo Chimes.wav'),
+  finishGame: new Audio('/Finish Game_Temple Bowl.wav'),
+}
+
+// Set volumes
+sfx.cardMove.volume = 0.6
+sfx.incorrect.volume = 0.6
+sfx.correct.volume = 0.6
+sfx.modalOpen.volume = 0.6
+sfx.nextLevel.volume = 0.6
+sfx.finishGame.volume = 0.6
+
+// Preload all SFX
+Object.values(sfx).forEach(s => { s.preload = 'auto' })
+
+function playSFX(sound) {
+  if (!state.musicPlaying) return
+  sound.currentTime = 0
+  sound.play().catch(() => {})
+}
 
 function initMusic() {
   if (state.musicPlaying) return
@@ -236,8 +263,10 @@ function showInfoModal(event) {
   `
 
   document.body.appendChild(overlay)
+  playSFX(sfx.modalOpen)
 
   function closeModal() {
+    playSFX(sfx.modalOpen)
     overlay.classList.add('closing')
     setTimeout(() => overlay.remove(), 300)
   }
@@ -360,6 +389,7 @@ function renderLevel() {
     dragClass: 'sortable-drag',
     delay: 50,
     delayOnTouchOnly: true,
+    onEnd: () => playSFX(sfx.cardMove),
   })
 
   document.getElementById('btn-check').addEventListener('click', checkOrder)
@@ -395,9 +425,11 @@ function checkOrder() {
       msg = 'The path reveals itself, at last.'
     }
 
+    playSFX(sfx.correct)
     revealCorrectOrder(msg, 'var(--color-moss)')
   } else {
     state.levelErrors++
+    playSFX(sfx.incorrect)
 
     // 5th error — lose a life, auto-reveal
     if (state.levelErrors >= MAX_ERRORS_PER_LEVEL) {
@@ -449,6 +481,7 @@ function checkOrder() {
 
 // ── Next Level ──
 function nextLevel() {
+  playSFX(sfx.nextLevel)
   inkBleed.classList.add('active')
 
   setTimeout(() => {
@@ -467,6 +500,7 @@ function showGameOver() {
   saveHighScore(state.score)
   const isNewRecord = state.score > 0 && state.score >= state.highScore
 
+  playSFX(sfx.finishGame)
   inkBleed.classList.add('active')
 
   setTimeout(() => {
@@ -526,6 +560,7 @@ function showCompletion() {
   saveHighScore(state.score)
   const isNewRecord = state.score >= state.highScore
 
+  playSFX(sfx.finishGame)
   inkBleed.classList.add('active')
 
   setTimeout(() => {
