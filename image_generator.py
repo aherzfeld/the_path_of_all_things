@@ -6,124 +6,132 @@ from vertexai.preview.vision_models import ImageGenerationModel
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable, InvalidArgument
 
 # ================= CONFIGURATION =================
-# Your Project ID
-PROJECT_ID = "p1-history-images" 
+PROJECT_ID = "p1-history-images"
+LOCATION = "us-central1"
 
-# We are defaulting to us-central1 (Iowa). 
-# If you get a "404 Not Found" error, try changing this to "us-east4" or "europe-west4".
-LOCATION = "us-central1" 
+# Full quality model (not the "fast" variant)
+MODEL_NAME = "imagen-3.0-generate-002"
 
-# Using Imagen 3 for best quality and text rendering
-MODEL_NAME = "imagen-3.0-fast-generate-001" 
+# Landscape to match the reference image style
+ASPECT_RATIO = "4:3"
 
-# Set to 4:3 to match the box in your screenshot
-ASPECT_RATIO = "4:3" 
-
-# Folder where images will be saved
 OUTPUT_DIR = "generated_images"
-
-# Your data file
 JSON_FILE = "src/data_with_prompts.json"
+
+MAX_RETRIES = 3
+COOLDOWN_SECS = 60
+DELAY_BETWEEN = 10  # seconds between requests
 # =================================================
 
-def setup_environment():
-    """Initializes the Vertex AI SDK and creates output folder."""
-    # Initialize the connection to Google Cloud
-    vertexai.init(project=PROJECT_ID, location=LOCATION)
-    
-    # Create the folder if it doesn't exist
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
-        print(f"Created output directory: {OUTPUT_DIR}")
 
-def generate_image(model, prompt, event_id, event_title):
-    """Generates an image from a prompt and saves it."""
-    
-    # Create a clean filename: "1_The_Big_Bang.png"
+def build_prompt(event):
+    """
+    Style: black ink wash on aged parchment, like the Big Bang reference.
+    The subject should be recognizable but rendered in loose ink wash sumi-e.
+    """
+    title = event["title"]
+    return (
+        f"{title}. "
+        f"Black ink wash and Sumi-e (wabi sabi) on aged cream parchment paper. "
+        f"Monochrome, no color. No text, no words, no letters."
+    )
+
+
+def setup_environment():
+    vertexai.init(project=PROJECT_ID, location=LOCATION)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+
+def generate_image(model, prompt, event_id, event_title, retries=0):
     safe_title = event_title.replace(" ", "_").replace("/", "-").replace("'", "")
     filename = f"{event_id}_{safe_title}.png"
     file_path = os.path.join(OUTPUT_DIR, filename)
 
-    # RESUME CHECK: If the file already exists, skip it.
     if os.path.exists(file_path):
-        print(f"[SKIP] Event {event_id}: Image already exists.")
-        return
+        print(f"  [SKIP] {event_id}: already exists")
+        return True
 
-    print(f"[GENERATING] Event {event_id}: {event_title}...")
+    print(f"  [GEN]  {event_id}: {event_title}")
 
     try:
-        # Generate the image
         images = model.generate_images(
             prompt=prompt,
             number_of_images=1,
             language="en",
             aspect_ratio=ASPECT_RATIO,
-            # 'block_few' is crucial for historical content (War, Slavery, etc.)
-            # to prevent the model from being overly sensitive.
-            safety_filter_level="block_few", 
-            person_generation="allow_adult" 
+            safety_filter_level="block_few",
+            person_generation="allow_adult",
         )
 
-        # Save the result
         if images:
             images[0].save(location=file_path, include_generation_parameters=True)
-            print(f"   -> SUCCESS: Saved to {filename}")
-        
-    except (ResourceExhausted, ServiceUnavailable) as e:
-        # If Google says "Too fast!", wait 60 seconds and try again.
-        print(f"   -> RATE LIMIT HIT. Cooling down for 60 seconds...")
-        time.sleep(60)
-        generate_image(model, prompt, event_id, event_title)
-        
+            print(f"         -> saved {filename}")
+            return True
+        else:
+            print(f"         -> no image returned")
+            return False
+
+    except (ResourceExhausted, ServiceUnavailable):
+        if retries < MAX_RETRIES:
+            print(f"         -> rate limit, cooling {COOLDOWN_SECS}s (retry {retries+1}/{MAX_RETRIES})")
+            time.sleep(COOLDOWN_SECS)
+            return generate_image(model, prompt, event_id, event_title, retries + 1)
+        else:
+            print(f"         -> rate limit, max retries reached — skipping")
+            return False
+
     except InvalidArgument as e:
-        # This usually happens if a prompt triggers a hard safety block
-        print(f"   -> BLOCKED: The prompt for '{event_title}' triggered a safety filter.")
+        print(f"         -> BLOCKED by safety filter")
         with open("failed_prompts.txt", "a") as log:
-            log.write(f"ID {event_id} ({event_title}): {e}\n")
-            
+            log.write(f"ID {event_id} | {event_title} | {e}\n")
+        return False
+
     except Exception as e:
-        print(f"   -> ERROR: {e}")
+        print(f"         -> ERROR: {e}")
+        return False
+
 
 def main():
     setup_environment()
-    
-    print(f"Connecting to Google Cloud Project: {PROJECT_ID}...")
+    print(f"Project: {PROJECT_ID}")
+    print(f"Model:   {MODEL_NAME}")
+    print(f"Ratio:   {ASPECT_RATIO}\n")
+
     try:
         model = ImageGenerationModel.from_pretrained(MODEL_NAME)
     except Exception as e:
-        print(f"Error loading model. Are you authenticated? Run 'gcloud auth application-default login' in terminal.")
-        print(f"Details: {e}")
+        print(f"Error loading model: {e}")
         return
 
-    # Load the JSON
     try:
-        with open(JSON_FILE, 'r', encoding='utf-8') as f:
+        with open(JSON_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
     except FileNotFoundError:
-        print(f"ERROR: Could not find '{JSON_FILE}'. Make sure the JSON file is in this folder.")
+        print(f"ERROR: '{JSON_FILE}' not found.")
         return
 
-    # Loop through all levels and events
-    total_count = 0
-    for level in data['levels']:
-        print(f"\n--- Processing Level: {level['name']} ---")
-        
-        for event in level['events']:
-            # Extract data
-            event_id = event['id']
-            title = event['title']
-            # Using your prompt exactly as requested
-            raw_prompt = event['image_prompt']
+    generated = 0
+    skipped = 0
+    failed = 0
 
-            # Run generation
-            generate_image(model, raw_prompt, event_id, title)
-            
-            total_count += 1
-            
-            # SMALL DELAY: Prevents hitting the "Requests Per Minute" quota
-            time.sleep(10)
+    for level in data["levels"]:
+        print(f"\n{'='*50}")
+        print(f"  {level['name']}")
+        print(f"{'='*50}")
 
-    print(f"\nDone! Processed {total_count} requests.")
+        for event in level["events"]:
+            prompt = build_prompt(event)
+
+            ok = generate_image(model, prompt, event["id"], event["title"])
+            if ok:
+                generated += 1
+            else:
+                failed += 1
+
+            time.sleep(DELAY_BETWEEN)
+
+    print(f"\nDone! Generated: {generated}  Failed: {failed}")
+
 
 if __name__ == "__main__":
     main()

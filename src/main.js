@@ -198,6 +198,12 @@ function createCardHTML(event) {
   `
 }
 
+// ── Image path helper ──
+function getEventImagePath(event) {
+  const safeTitle = event.title.replace(/ /g, '_').replace(/\//g, '-').replace(/'/g, '')
+  return `/images/${event.id}_${safeTitle}.webp`
+}
+
 // ── Info Modal ──
 function showInfoModal(event) {
   const existing = document.querySelector('.modal-overlay')
@@ -207,6 +213,8 @@ function showInfoModal(event) {
     .split('\n\n')
     .map(p => `<p>${p}</p>`)
     .join('')
+
+  const imagePath = getEventImagePath(event)
 
   const overlay = document.createElement('div')
   overlay.className = 'modal-overlay'
@@ -220,9 +228,7 @@ function showInfoModal(event) {
       <div class="modal-divider"></div>
       <div class="modal-columns">
         <div class="modal-image">
-          <div class="modal-image-placeholder">
-            <span class="modal-image-icon">&#x25CC;</span>
-          </div>
+          <img src="${imagePath}" alt="${event.title}" class="modal-img" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'modal-image-placeholder',innerHTML:'<span class=\\'modal-image-icon\\'>&#x25CC;</span>'}))" />
         </div>
         <div class="modal-body">${bodyHTML}</div>
       </div>
