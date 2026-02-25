@@ -45,6 +45,7 @@ const sfx = {
   modalOpen:  new Audio(`${BASE}Modal Open - Epidemic Sound.wav`),
   nextLevel:  new Audio(`${BASE}Next Level_Bamboo Chimes.wav`),
   finishGame: new Audio(`${BASE}Finish Game_Temple Bowl.wav`),
+  gameStart:  new Audio(`${BASE}Game start_crystal bowl.wav`),
 }
 
 // Set volumes
@@ -54,30 +55,106 @@ sfx.correct.volume = 0.6
 sfx.modalOpen.volume = 0.6
 sfx.nextLevel.volume = 0.6
 sfx.finishGame.volume = 0.6
+sfx.gameStart.volume = 0.6
 
 // Preload all SFX
 Object.values(sfx).forEach(s => { s.preload = 'auto' })
 
+// SFX plays regardless of mute (mute only controls music)
 function playSFX(sound) {
-  if (!state.musicPlaying) return
   sound.currentTime = 0
   sound.play().catch(() => {})
 }
 
-function initMusic() {
-  if (state.musicPlaying) return
-  const saved = localStorage.getItem(MUSIC_VOLUME_KEY)
-  if (saved === 'muted') {
-    state.musicPlaying = false
-    updateMusicButton()
-    return
-  }
+// Play a sound and fade it out over its last N ms
+function playSFXWithFade(sound, fadeDuration = 2000) {
+  sound.currentTime = 0
+  sound.play().then(() => {
+    const schedFade = () => {
+      const remaining = (sound.duration - sound.currentTime) * 1000
+      if (remaining <= fadeDuration) {
+        fadeOutAudio(sound, remaining)
+      } else {
+        setTimeout(() => fadeOutAudio(sound, fadeDuration), remaining - fadeDuration)
+      }
+    }
+    if (sound.duration && isFinite(sound.duration)) {
+      schedFade()
+    } else {
+      sound.addEventListener('loadedmetadata', schedFade, { once: true })
+    }
+  }).catch(() => {})
+}
+
+// Fade music volume from 0 to target over duration
+function fadeInMusic(target, durationMs) {
+  bgMusic.volume = 0
   bgMusic.play().then(() => {
     state.musicPlaying = true
     updateMusicButton()
-  }).catch(() => {
-    // Autoplay blocked — will start on first user interaction
-  })
+    const steps = 40
+    const increment = target / steps
+    let vol = 0
+    const fade = setInterval(() => {
+      vol += increment
+      if (vol >= target) {
+        bgMusic.volume = target
+        clearInterval(fade)
+      } else {
+        bgMusic.volume = vol
+      }
+    }, durationMs / steps)
+  }).catch(() => {})
+}
+
+// Fade out an audio element over durationMs, then pause & reset volume
+function fadeOutAudio(audio, durationMs, onComplete) {
+  const startVol = audio.volume
+  const steps = 30
+  const decrement = startVol / steps
+  let vol = startVol
+  const fade = setInterval(() => {
+    vol -= decrement
+    if (vol <= 0) {
+      audio.volume = 0
+      audio.pause()
+      audio.volume = startVol  // reset for next play
+      clearInterval(fade)
+      if (onComplete) onComplete()
+    } else {
+      audio.volume = vol
+    }
+  }, durationMs / steps)
+}
+
+// Play crystal bowl then optionally fade in music
+function playStartSequence(enableMusic) {
+  playSFX(sfx.gameStart)
+
+  // Fade bowl out over its last 2 seconds
+  const bowl = sfx.gameStart
+  const fadeDuration = 2000
+
+  const startFadeOut = () => {
+    const remaining = (bowl.duration - bowl.currentTime) * 1000
+    if (remaining <= fadeDuration) {
+      // Already within fade window — start immediately
+      fadeOutAudio(bowl, remaining, enableMusic ? () => fadeInMusic(0.12, 2000) : null)
+    } else {
+      // Wait until we're fadeDuration ms from the end
+      const delay = remaining - fadeDuration
+      setTimeout(() => {
+        fadeOutAudio(bowl, fadeDuration, enableMusic ? () => fadeInMusic(0.12, 2000) : null)
+      }, delay)
+    }
+  }
+
+  // duration may not be loaded yet
+  if (bowl.duration && isFinite(bowl.duration)) {
+    startFadeOut()
+  } else {
+    bowl.addEventListener('loadedmetadata', startFadeOut, { once: true })
+  }
 }
 
 function toggleMusic() {
@@ -87,6 +164,7 @@ function toggleMusic() {
     localStorage.setItem(MUSIC_VOLUME_KEY, 'muted')
   } else {
     bgMusic.play().then(() => {
+      bgMusic.volume = 0.12
       state.musicPlaying = true
       localStorage.setItem(MUSIC_VOLUME_KEY, 'on')
     })
@@ -101,11 +179,71 @@ function updateMusicButton() {
   if (btn) btn.classList.toggle('muted', !state.musicPlaying)
 }
 
-// Start music on first user interaction
-document.addEventListener('click', function startMusic() {
-  initMusic()
-  document.removeEventListener('click', startMusic)
-}, { once: true })
+// ── Start Screen ──
+function showStartScreen() {
+  const hud = document.querySelector('.hud')
+  if (hud) hud.style.opacity = '0'
+
+  const saved = localStorage.getItem(MUSIC_VOLUME_KEY)
+  let musicOn = saved !== 'muted'
+
+  const overlay = document.createElement('div')
+  overlay.className = 'start-overlay'
+  overlay.innerHTML = `
+    <div class="start-card">
+      <div class="start-symbol">\u25CC</div>
+      <h1 class="start-title">The Path of All Things</h1>
+      <div class="start-divider"></div>
+      <p class="start-description">
+        From the first light to the last silence,<br>
+        trace the thread that binds all things.<br>
+        Arrange the moments. Find the order.
+      </p>
+      <button class="start-music-toggle" id="start-music-toggle">
+        \u266B Music: ${musicOn ? 'On' : 'Off'}
+      </button>
+      <button class="btn-contemplate start-begin" id="btn-begin">
+        Begin
+      </button>
+    </div>
+  `
+
+  document.body.appendChild(overlay)
+
+  // Music toggle on start screen
+  const musicBtn = overlay.querySelector('#start-music-toggle')
+  musicBtn.addEventListener('click', () => {
+    musicOn = !musicOn
+    musicBtn.textContent = `\u266B Music: ${musicOn ? 'On' : 'Off'}`
+    musicBtn.classList.toggle('off', !musicOn)
+  })
+
+  // Begin button
+  overlay.querySelector('#btn-begin').addEventListener('click', () => {
+    // Save music preference
+    localStorage.setItem(MUSIC_VOLUME_KEY, musicOn ? 'on' : 'muted')
+
+    // Play crystal bowl + start music if enabled
+    playStartSequence(musicOn)
+
+    // Fade out start screen
+    overlay.classList.add('closing')
+    setTimeout(() => {
+      overlay.remove()
+
+      // Show HUD
+      if (hud) {
+        hud.style.opacity = '1'
+        hud.style.transition = 'opacity 0.8s ease'
+      }
+
+      // Start the game
+      renderProgressDots()
+      renderLevel()
+      updateMusicButton()
+    }, 600)
+  })
+}
 
 // ── High Score (localStorage) ──
 function loadHighScore() {
@@ -502,7 +640,7 @@ function showGameOver() {
   saveHighScore(state.score)
   const isNewRecord = state.score > 0 && state.score >= state.highScore
 
-  playSFX(sfx.finishGame)
+  playSFXWithFade(sfx.finishGame, 2000)
   inkBleed.classList.add('active')
 
   setTimeout(() => {
@@ -541,6 +679,7 @@ function showGameOver() {
     `
 
     document.getElementById('btn-restart').addEventListener('click', () => {
+      playSFX(sfx.gameStart)
       inkBleed.classList.add('active')
       setTimeout(() => {
         state.currentLevel = 0
@@ -562,7 +701,7 @@ function showCompletion() {
   saveHighScore(state.score)
   const isNewRecord = state.score >= state.highScore
 
-  playSFX(sfx.finishGame)
+  playSFXWithFade(sfx.finishGame, 2000)
   inkBleed.classList.add('active')
 
   setTimeout(() => {
@@ -607,6 +746,7 @@ function showCompletion() {
     `
 
     document.getElementById('btn-restart').addEventListener('click', () => {
+      playSFX(sfx.gameStart)
       inkBleed.classList.add('active')
       setTimeout(() => {
         state.currentLevel = 0
@@ -625,8 +765,7 @@ function showCompletion() {
 
 // ── Init ──
 document.getElementById('music-toggle').addEventListener('click', toggleMusic)
-renderProgressDots()
-renderLevel()
+showStartScreen()
 
 function initEmbers() {
   const canvas = document.getElementById('embers-canvas');
