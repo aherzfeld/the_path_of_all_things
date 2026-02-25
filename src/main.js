@@ -30,19 +30,21 @@ const progressDots = document.getElementById('progress-dots')
 const inkBleed = document.getElementById('ink-bleed')
 
 // ── Audio ──
-const bgMusic = new Audio('/music.mp3')
+const BASE = import.meta.env.BASE_URL
+
+const bgMusic = new Audio(`${BASE}music.mp3`)
 bgMusic.loop = true
 bgMusic.volume = 0.12
 bgMusic.preload = 'auto'
 
 // Sound effects
 const sfx = {
-  cardMove:   new Audio('/Card movement - Epidemic Sound.wav'),
-  incorrect:  new Audio('/Incorrect_Wood Impact.mp3'),
-  correct:    new Audio('/All 5 Correct_Japanese Instrument.wav'),
-  modalOpen:  new Audio('/Modal Open - Epidemic Sound.wav'),
-  nextLevel:  new Audio('/Next Level_Bamboo Chimes.wav'),
-  finishGame: new Audio('/Finish Game_Temple Bowl.wav'),
+  cardMove:   new Audio(`${BASE}Card movement - Epidemic Sound.wav`),
+  incorrect:  new Audio(`${BASE}Incorrect_Wood Impact.mp3`),
+  correct:    new Audio(`${BASE}All 5 Correct_Japanese Instrument.wav`),
+  modalOpen:  new Audio(`${BASE}Modal Open - Epidemic Sound.wav`),
+  nextLevel:  new Audio(`${BASE}Next Level_Bamboo Chimes.wav`),
+  finishGame: new Audio(`${BASE}Finish Game_Temple Bowl.wav`),
 }
 
 // Set volumes
@@ -228,7 +230,7 @@ function createCardHTML(event) {
 // ── Image path helper ──
 function getEventImagePath(event) {
   const safeTitle = event.title.replace(/ /g, '_').replace(/\//g, '-').replace(/'/g, '')
-  return `/images/${event.id}_${safeTitle}.webp`
+  return `${BASE}images/${event.id}_${safeTitle}.webp`
 }
 
 // ── Info Modal ──
