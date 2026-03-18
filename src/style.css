@@ -857,3 +857,28 @@ body::before {
     font-size: 0.85rem;
   }
 }
+
+/* ── Mobile HUD & Layout ── */
+@media (max-width: 640px) {
+  .hud {
+    padding: 0.6rem 1rem;
+    padding-top: calc(0.6rem + env(safe-area-inset-top));
+  }
+
+  .score-hud {
+    gap: 0.75rem;
+  }
+
+  .score-value {
+    font-size: 1rem;
+  }
+
+  .btn-contemplate {
+    padding: 0.9rem 2rem;
+    min-height: 44px;
+  }
+
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

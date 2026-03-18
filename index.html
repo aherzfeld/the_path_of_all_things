@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>The Path of All Things</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,10 +19,10 @@
 
     <!-- HUD -->
     <header class="hud">
-      <div class="text-sm tracking-[0.2em] uppercase opacity-50" style="font-family: var(--font-serif);">
+      <div class="hidden sm:block text-sm tracking-[0.2em] uppercase opacity-50" style="font-family: var(--font-serif);">
         The Path of All Things
       </div>
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2 sm:gap-4 ml-auto sm:ml-0">
         <div id="lives-display" class="lives-display">
           <span class="life-pip alive">&#x25C6;</span>
           <span class="life-pip alive">&#x25C6;</span>
@@ -45,7 +45,7 @@
     </header>
 
     <!-- Main Game Area -->
-    <main id="app" class="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-20">
+    <main id="app" class="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-14 md:py-20">
     </main>
 
     <script type="module" src="/src/main.js"></script>

@@ -488,26 +488,26 @@ function renderLevel() {
   state.levelErrors = 0
 
   app.innerHTML = `
-    <div class="text-center mb-12">
-      <h1 class="level-title text-3xl md:text-4xl font-semibold tracking-wide" style="font-family: var(--font-serif);">
+    <div class="text-center mb-6 md:mb-12">
+      <h1 class="level-title text-2xl md:text-4xl font-semibold tracking-wide" style="font-family: var(--font-serif);">
         ${level.name}
       </h1>
-      <p class="level-subtitle mt-3 text-base italic opacity-50" style="font-family: var(--font-serif);">
+      <p class="level-subtitle mt-2 md:mt-3 text-sm md:text-base italic opacity-50" style="font-family: var(--font-serif);">
         ${level.subtitle}
       </p>
-      <p class="level-subtitle mt-6 text-xs tracking-[0.2em] uppercase opacity-30">
+      <p class="level-subtitle mt-4 md:mt-6 text-xs tracking-[0.2em] uppercase opacity-30">
         Arrange from earliest to latest
       </p>
     </div>
 
     <div class="relative w-full max-w-lg mx-auto">
       <div class="timeline-line"></div>
-      <div id="card-list" class="relative z-10 flex flex-col items-center gap-3 px-2">
+      <div id="card-list" class="relative z-10 flex flex-col items-center gap-2 md:gap-3 px-2">
         ${shuffledEvents.map(e => createCardHTML(e)).join('')}
       </div>
     </div>
 
-    <div class="mt-10 flex flex-col items-center gap-4">
+    <div class="mt-6 md:mt-10 flex flex-col items-center gap-4">
       <button class="btn-contemplate" id="btn-check">
         Contemplate
       </button>
